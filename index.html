@@ -68,14 +68,14 @@
     <script type='text/javascript'>
 
         function handleFiles() {
-            var info = document.getElementById('file-info-table');
-            info.innerHTML = '';
+            var table = document.getElementById('file-info-table');
+            table.innerHTML = '';
             if (this.files.length === 1) {
+                table.innerHTML = '<tr><th>Name</th><th>Value</th></tr>';
                 const dllFile = this.files[0];
-                info.innerHTML = '<tr><th>Name</th><th>Value</th></tr>';
                 for (const k in dllFile)
                     if (typeof dllFile[k] != 'function')
-                        info.insertRow().innerHTML = `<td>${k}</td><td>${dllFile[k]}</td>`;
+                    table.insertRow().innerHTML = `<td>${k}</td><td>${dllFile[k]}</td>`;
             }
         }
         document.getElementById('dll-picker').addEventListener("change", handleFiles, false);

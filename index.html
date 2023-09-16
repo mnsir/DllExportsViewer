@@ -38,7 +38,7 @@
             height: calc(100% - 10px);
         }
 
-        #header, 
+        #header,
         #footer {
             height: 10%;
         }
@@ -75,7 +75,7 @@
                 const dllFile = this.files[0];
                 for (const k in dllFile)
                     if (typeof dllFile[k] != 'function')
-                    table.insertRow().innerHTML = `<td>${k}</td><td>${dllFile[k]}</td>`;
+                        table.insertRow().innerHTML = `<td>${k}</td><td>${dllFile[k]}</td>`;
             }
         }
         document.getElementById('dll-picker').addEventListener("change", handleFiles, false);

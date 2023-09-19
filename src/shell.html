@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLL exports viewer</title>
+    <style type="text/css">
+        html {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            width: 100%;
+            height: inherit;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            height: inherit;
+        }
+
+        input {
+            width: 100%;
+        }
+
+        table,
+        tr,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        textarea {
+            width: calc(100% - 6px);
+            height: calc(100% - 10px);
+        }
+
+        #header,
+        #footer {
+            height: 10%;
+        }
+    </style>
+</head>
+
+<body>
+    <table id="body-table">
+        <tr id="header">
+            <td>
+                <input type="file" id="dll-picker">
+                <table id="file-info-table"></table>
+            </td>
+        </tr>
+        <tr id="main">
+            <td>
+                <textarea id="output"></textarea>
+            </td>
+        </tr>
+        <tr id="footer">
+            <td>
+                <progress value="20" max="100" id="progress"></progress>
+            </td>
+        </tr>
+    </table>
+
+    <script type='text/javascript'>
+
+        function handleFiles() {
+            var output = document.getElementById('output');
+            if (output) output.value = '';
+
+            var table = document.getElementById('file-info-table');
+            table.innerHTML = '';
+            if (this.files.length === 1) {
+                table.innerHTML = '<tr><th>Name</th><th>Value</th></tr>';
+                const dllFile = this.files[0];
+                for (const k in dllFile)
+                    if (typeof dllFile[k] != 'function')
+                        table.insertRow().innerHTML = `<td>${k}</td><td>${dllFile[k]}</td>`;
+
+                function OnLoadFile(event) {
+                    const uint8Arr = new Uint8Array(event.target.result);
+                    const size = uint8Arr.length * uint8Arr.BYTES_PER_ELEMENT;
+                    const ptr = Module._malloc(size);
+                    var data_on_heap = Module.HEAPU8.subarray(ptr, ptr + size);
+                    data_on_heap.set(uint8Arr);
+                    Module.ccall('PrintDllExports', null, ['number', 'number'], [data_on_heap.byteOffset, uint8Arr.length]);
+                    Module._free(data_on_heap.byteOffset);
+                }
+
+                const reader = new FileReader();
+                reader.onload = OnLoadFile;
+                reader.readAsArrayBuffer(dllFile);
+            }
+        }
+        document.getElementById('dll-picker').addEventListener("change", handleFiles, false);
+
+        var Module = {
+            //preRun: [],
+            //postRun: [],
+            print: (function () {
+                var element = document.getElementById('output');
+                if (element) element.value = ''; // clear browser cache
+                return text => {
+                    if (arguments.length > 1)
+                        text = Array.prototype.slice.call(arguments).join(' ');
+                    // These replacements are necessary if you render to raw HTML
+                    //text = text.replace(/&/g, "&amp;");
+                    //text = text.replace(/</g, "&lt;");
+                    //text = text.replace(/>/g, "&gt;");
+                    //text = text.replace('\n', '<br>', 'g');
+                    console.log(text);
+                    if (element) {
+                        element.value += text + "\n";
+                        element.scrollTop = element.scrollHeight; // focus on bottom
+                    }
+                };
+            })(),
+            //canvas: (() => {
+            //    var canvas = document.getElementById('canvas');
+            //    // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+            //    // application robust, you may want to override this behavior before shipping!
+            //    // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+            //    canvas.addEventListener("webglcontextlost", (e) => { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+            //    return canvas;
+            //})(),
+            //setStatus: (text) => {
+            //    if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+            //    if (text === Module.setStatus.last.text) return;
+            //    var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            //    var now = Date.now();
+            //    if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+            //    Module.setStatus.last.time = now;
+            //    Module.setStatus.last.text = text;
+            //    if (m) {
+            //        text = m[1];
+            //        progressElement.value = parseInt(m[2]) * 100;
+            //        progressElement.max = parseInt(m[4]) * 100;
+            //        progressElement.hidden = false;
+            //        spinnerElement.hidden = false;
+            //    } else {
+            //        progressElement.value = null;
+            //        progressElement.max = null;
+            //        progressElement.hidden = true;
+            //        if (!text) spinnerElement.hidden = true;
+            //    }
+            //    statusElement.innerHTML = text;
+            //},
+            //totalDependencies: 0,
+            //monitorRunDependencies: (left) => {
+            //    this.totalDependencies = Math.max(this.totalDependencies, left);
+            //    Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            //}
+        };
+        //Module.setStatus('Downloading...');
+        //window.onerror = () => {
+        //    Module.setStatus('Exception thrown, see JavaScript console');
+        //    spinnerElement.style.display = 'none';
+        //    Module.setStatus = (text) => {
+        //        if (text) console.error('[post-exception status] ' + text);
+        //    };
+        //};
+        //window.onbeforeunload = () => { Module.ccall('ShutDown', null, [], []); };
+
+    </script>
+    {{{ SCRIPT }}}
+</body>
+
+</html>

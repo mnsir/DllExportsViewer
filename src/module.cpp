@@ -171,6 +171,13 @@ struct sectionHeader
 };
 
 
+std::istream & operator>>(std::istream & is, sectionHeader & val)
+{
+    is.read(reinterpret_cast<char *>(&val), sizeof(val));
+    return is;
+}
+
+
 template<typename T>
 auto from_stream(std::istream & is)
 {
@@ -218,45 +225,30 @@ std::vector<std::string> ReadDllExports(std::istream & is)
                     for (int i = 0; i < NumberOfSections; i++)
                     {
                         sectionHeader item;
-                        is.read(reinterpret_cast<char *>(item.Name), 8);
-                        is.read(reinterpret_cast<char *>(&item.VirtualSize), 4);
-                        is.read(reinterpret_cast<char *>(&item.VirtualAddress), 4);
-                        is.read(reinterpret_cast<char *>(&item.SizeOfRawData), 4);
-                        is.read(reinterpret_cast<char *>(&item.PointerToRawData), 4);
-                        is.read(reinterpret_cast<char *>(&item.PointerToRelocations), 4);
-                        is.read(reinterpret_cast<char *>(&item.PointerToLineNumbers), 4);
-                        is.read(reinterpret_cast<char *>(&item.NumberOfRelocations), 2);
-                        is.read(reinterpret_cast<char *>(&item.NumberOfLineNumbers), 2);
-                        is.read(reinterpret_cast<char *>(&item.Characteristics), 4);
+                        is >> item;
                         sections.push_back(item);
                     }
                     auto Rva2Offset = [&sections](size_t rva) -> size_t
                     {
                         for (auto && section : sections)
                             if (section.VirtualAddress + section.SizeOfRawData >= rva)
-                                return section.PointerToRawData + (rva + section.SizeOfRawData) - (section.VirtualAddress + section.SizeOfRawData);
+                                return section.PointerToRawData + rva - section.VirtualAddress;
                         return -1;
                     };
-                    const int offset = Rva2Offset(ExportVirtualAddress);
-                    is.seekg(offset, std::ios::beg);
+                    is.seekg(Rva2Offset(ExportVirtualAddress), std::ios::beg);
 
-                    ImageExportDirectory ied;
-                    is >> ied;
+                    ImageExportDirectory imageExportDirectory;
+                    is >> imageExportDirectory;
 
-                    const auto NumberOfNames = ied.NumberOfNames;
-                    const auto AddressOfNames = ied.AddressOfNames;
+                    is.seekg(Rva2Offset(imageExportDirectory.AddressOfNames), std::ios::beg);
 
-                    const unsigned int namesOffset = Rva2Offset(AddressOfNames);
-                    is.seekg(namesOffset, std::ios::beg);
-
-                    res.reserve(NumberOfNames);
-                    for (int i = 0; i < NumberOfNames; i++)
+                    res.reserve(imageExportDirectory.NumberOfNames);
+                    for (int i = 0; i < imageExportDirectory.NumberOfNames; i++)
                     {
                         const auto y = from_stream<unsigned int>(is);
                         auto pos = is.tellg();
 
-                        auto qwe = Rva2Offset(y);
-                        is.seekg(qwe, std::ios::beg);
+                        is.seekg(Rva2Offset(y), std::ios::beg);
 
                         std::string str;
                         std::getline(is, str, '\0');
